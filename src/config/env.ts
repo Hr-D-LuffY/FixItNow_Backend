@@ -17,4 +17,5 @@ export const env = {
   // stripeSecretKey: getEnv("STRIPE_SECRET_KEY", ""),
   // stripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
   clientUrl: getEnv("CLIENT_URL", "*"),
+  nodeEnv: getEnv("NODE_ENV", "development"),
 };
