@@ -5,6 +5,7 @@ import { sendSuccess, sendError } from "../utils/response";
 import authRoutes from "./auth.routes";
 import categoryRoutes from "./category.routes";
 import technicianProfileRoutes from "./technicianProfile.routes";
+import serviceRoutes from "./service.routes";
 
 const router = Router();
 
@@ -25,5 +26,6 @@ router.get("/hlw", async (req, res) => {
 router.use("/auth", authRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/technicians", technicianProfileRoutes);
+router.use("/services", serviceRoutes);
 
 export default router;

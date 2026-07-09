@@ -46,6 +46,8 @@ model Category {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  services Service[]
+
   @@map("categories")
 }
 
@@ -60,6 +62,23 @@ model TechnicianProfile {
   updatedAt       DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id])
+  services Service[]
 
   @@map("technician_profiles")
+}
+
+model Service {
+  id           String   @id @default(uuid())
+  categoryId   String
+  technicianId String
+  title        String
+  description  String?
+  price        Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  category   Category          @relation(fields: [categoryId], references: [id])
+  technician TechnicianProfile @relation(fields: [technicianId], references: [id])
+
+  @@map("services")
 }
