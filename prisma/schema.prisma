@@ -33,6 +33,16 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum PaymentProvider {
+  STRIPE
+}
+
 model User {
   id        String     @id @default(uuid())
   name      String
@@ -46,6 +56,7 @@ model User {
 
   technicianProfile TechnicianProfile?
   bookings          Booking[]
+  payments          Payment[]          @relation("CustomerPayments")
 
   @@map("users")
 }
@@ -110,6 +121,27 @@ model Booking {
   customer   User              @relation(fields: [customerId], references: [id])
   technician TechnicianProfile @relation(fields: [technicianId], references: [id])
   service    Service           @relation(fields: [serviceId], references: [id])
+  payment    Payment?
 
   @@map("bookings")
+}
+
+model Payment {
+  id                      String          @id @default(uuid())
+  bookingId               String          @unique
+  customerId              String
+  amount                  Float
+  currency                String          @default("usd")
+  provider                PaymentProvider @default(STRIPE)
+  status                  PaymentStatus   @default(PENDING)
+  stripePaymentIntentId   String?         @unique
+  stripeCheckoutSessionId String?         @unique
+  paidAt                  DateTime?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+
+  booking  Booking @relation(fields: [bookingId], references: [id])
+  customer User    @relation("CustomerPayments", fields: [customerId], references: [id])
+
+  @@map("payments")
 }
