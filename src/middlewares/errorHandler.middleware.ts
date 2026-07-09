@@ -13,12 +13,12 @@ export function errorHandler(
 ) {
 	// Zod validation errors (from validate.middleware.ts)
 	if (err instanceof ZodError) {
-		return sendError(
-			res,
-			400,
-			"Validation failed",
-			z.flattenError(err).fieldErrors,
-		);
+		const flattened = z.flattenError(err);
+		const errorDetails =
+			flattened.formErrors.length > 0 ?
+				{ formErrors: flattened.formErrors, fieldErrors: flattened.fieldErrors }
+			:	flattened.fieldErrors;
+		return sendError(res, 400, "Validation failed", errorDetails);
 	}
 
 	// Known application/business-logic errors
@@ -29,8 +29,16 @@ export function errorHandler(
 	// Known Prisma errors (duplicate unique field, record not found, etc.)
 	if (err instanceof Prisma.PrismaClientKnownRequestError) {
 		if (err.code === "P2002") {
+			if (env.nodeEnv === "development") {
+				console.error("P2002 meta (raw):", err.meta);
+			}
+			const target = err.meta?.target;
+			const fields =
+				Array.isArray(target) ? target
+				: typeof target === "string" ? [target]
+				: null;
 			return sendError(res, 409, "A record with this value already exists", {
-				fields: err.meta?.target ?? null,
+				fields,
 			});
 		}
 		if (err.code === "P2025") {

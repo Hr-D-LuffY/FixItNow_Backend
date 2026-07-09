@@ -1,7 +1,9 @@
 import { Router } from "express";
 import prisma from "../config/prisma";
-import authRoutes from "./auth.routes";
 import { sendSuccess, sendError } from "../utils/response";
+
+import authRoutes from "./auth.routes";
+import categoryRoutes from "./category.routes";
 
 const router = Router();
 
@@ -20,5 +22,6 @@ router.get("/hlw", async (req, res) => {
 });
 
 router.use("/auth", authRoutes);
+router.use("/categories", categoryRoutes);
 
 export default router;
