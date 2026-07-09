@@ -23,6 +23,16 @@ enum UserStatus {
   BANNED
 }
 
+enum BookingStatus {
+  REQUESTED
+  ACCEPTED
+  DECLINED
+  PAID
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id        String     @id @default(uuid())
   name      String
@@ -35,6 +45,7 @@ model User {
   updatedAt DateTime   @updatedAt
 
   technicianProfile TechnicianProfile?
+  bookings          Booking[]
 
   @@map("users")
 }
@@ -63,6 +74,7 @@ model TechnicianProfile {
 
   user User @relation(fields: [userId], references: [id])
   services Service[]
+  bookings      Booking[]
 
   @@map("technician_profiles")
 }
@@ -79,6 +91,25 @@ model Service {
 
   category   Category          @relation(fields: [categoryId], references: [id])
   technician TechnicianProfile @relation(fields: [technicianId], references: [id])
+  bookings   Booking[]
 
   @@map("services")
+}
+
+model Booking {
+  id           String        @id @default(uuid())
+  customerId   String
+  technicianId String
+  serviceId    String
+  status       BookingStatus @default(REQUESTED)
+  price        Float
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  customer   User              @relation(fields: [customerId], references: [id])
+  technician TechnicianProfile @relation(fields: [technicianId], references: [id])
+  service    Service           @relation(fields: [serviceId], references: [id])
+
+  @@map("bookings")
 }
