@@ -4,9 +4,7 @@ import { stripe } from "../config/stripe";
 import { env } from "../config/env";
 import { AppError } from "../utils/AppError";
 import type { Prisma } from "../generated/prisma/client";
-import type {
-	CreatePaymentSessionInput,
-} from "../validations/payment.validation";
+import type { CreatePaymentSessionInput } from "../validations/payment.validation";
 
 const DEFAULT_CURRENCY = "usd";
 
@@ -113,4 +111,102 @@ export async function createPaymentSession(
 	};
 }
 
+export async function handleStripeWebhookEvent(
+	rawBody: Buffer,
+	signature: string,
+) {
+	let event: Stripe.Event;
 
+	try {
+		event = stripe.webhooks.constructEvent(
+			rawBody,
+			signature,
+			env.stripeWebhookSecret,
+		);
+	} catch (err) {
+		const message = err instanceof Error ? err.message : "Invalid signature";
+		throw new AppError(
+			`Webhook signature verification failed: ${message}`,
+			400,
+		);
+	}
+
+	switch (event.type) {
+		case "checkout.session.completed": {
+			await handleCheckoutSessionCompleted(
+				event.data.object as Stripe.Checkout.Session,
+			);
+			break;
+		}
+		case "payment_intent.payment_failed": {
+			await handlePaymentIntentFailed(
+				event.data.object as Stripe.PaymentIntent,
+			);
+			break;
+		}
+		default:
+			// Unhandled event type — acknowledge and ignore
+			break;
+	}
+}
+
+async function handleCheckoutSessionCompleted(
+	session: Stripe.Checkout.Session,
+) {
+	const bookingId = session.metadata?.bookingId ?? session.client_reference_id;
+
+	if (!bookingId) {
+		throw new AppError("Checkout session missing bookingId metadata", 400);
+	}
+
+	const payment = await prisma.payment.findUnique({ where: { bookingId } });
+
+	if (!payment) {
+		throw new AppError(
+			`Payment record not found for booking ${bookingId}`,
+			404,
+		);
+	}
+
+	// Idempotency guard — Stripe may deliver the same event more than once
+	if (payment.status === "SUCCEEDED") {
+		return;
+	}
+
+	const paymentIntentId =
+		typeof session.payment_intent === "string" ?
+			session.payment_intent
+		:	payment.stripePaymentIntentId;
+
+	await prisma.$transaction([
+		prisma.payment.update({
+			where: { bookingId },
+			data: {
+				status: "SUCCEEDED",
+				paidAt: new Date(),
+				...(paymentIntentId !== null && {
+					stripePaymentIntentId: paymentIntentId,
+				}),
+			},
+		}),
+		prisma.booking.update({
+			where: { id: bookingId },
+			data: { status: "PAID" },
+		}),
+	]);
+}
+
+async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
+	const payment = await prisma.payment.findUnique({
+		where: { stripePaymentIntentId: paymentIntent.id },
+	});
+
+	if (!payment || payment.status === "SUCCEEDED") {
+		return;
+	}
+
+	await prisma.payment.update({
+		where: { id: payment.id },
+		data: { status: "FAILED" },
+	});
+}

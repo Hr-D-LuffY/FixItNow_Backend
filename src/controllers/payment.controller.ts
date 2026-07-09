@@ -25,3 +25,20 @@ export const createPaymentSession = asyncHandler(
 		);
 	},
 );
+
+export const handleStripeWebhook = asyncHandler(
+	async (req: Request, res: Response) => {
+		const signature = req.headers["stripe-signature"];
+
+		if (!signature || typeof signature !== "string") {
+			throw new AppError("Missing Stripe signature header", 400);
+		}
+
+		await paymentService.handleStripeWebhookEvent(
+			req.body as Buffer,
+			signature,
+		);
+
+		return res.status(200).json({ received: true });
+	},
+);
