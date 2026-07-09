@@ -43,3 +43,19 @@ export const getBooking = asyncHandler(async (req: Request, res: Response) => {
 	);
 	return sendSuccess(res, 200, "Booking fetched successfully", { booking });
 });
+
+export const updateBookingStatus = asyncHandler(
+	async (req: Request, res: Response) => {
+		if (!req.user) {
+			throw new AppError("Authentication required", 401);
+		}
+		const booking = await bookingService.updateBookingStatus(
+			req.user.userId,
+			req.params.id as string,
+			req.body,
+		);
+		return sendSuccess(res, 200, "Booking status updated successfully", {
+			booking,
+		});
+	},
+);

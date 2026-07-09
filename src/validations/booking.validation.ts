@@ -35,3 +35,14 @@ export const browseBookingsQuerySchema = z.object({
 });
 
 export type BrowseBookingsQuery = z.infer<typeof browseBookingsQuerySchema>;
+
+export const updateBookingStatusSchema = z.object({
+	status: z.enum(
+		["ACCEPTED", "DECLINED", "IN_PROGRESS", "COMPLETED"],
+		"Invalid status",
+	),
+});
+
+export type UpdateBookingStatusInput = z.infer<
+	typeof updateBookingStatusSchema
+>;

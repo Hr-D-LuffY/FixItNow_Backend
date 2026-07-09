@@ -1,9 +1,10 @@
 import prisma from "../config/prisma";
 import { AppError } from "../utils/AppError";
-import type { Prisma } from "../generated/prisma/client";
+import type { Prisma, BookingStatus } from "../generated/prisma/client";
 import type {
 	CreateBookingInput,
 	BrowseBookingsQuery,
+	UpdateBookingStatusInput,
 } from "../validations/booking.validation";
 
 async function getOwnTechnicianProfileOrThrow(userId: string) {
@@ -126,4 +127,48 @@ export async function getBookingById(
 	}
 
 	throw new AppError("You do not have permission to view this booking", 403);
+}
+
+const TECHNICIAN_ALLOWED_TRANSITIONS: Partial<
+	Record<BookingStatus, BookingStatus[]>
+> = {
+	REQUESTED: ["ACCEPTED", "DECLINED"],
+	PAID: ["IN_PROGRESS"],
+	IN_PROGRESS: ["COMPLETED"],
+};
+
+export async function updateBookingStatus(
+	userId: string,
+	bookingId: string,
+	input: UpdateBookingStatusInput,
+) {
+	const profile = await getOwnTechnicianProfileOrThrow(userId);
+
+	const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+	if (!booking) {
+		throw new AppError("Booking not found", 404);
+	}
+
+	if (booking.technicianId !== profile.id) {
+		throw new AppError(
+			"You do not have permission to update this booking",
+			403,
+		);
+	}
+
+	const allowedNextStatuses =
+		TECHNICIAN_ALLOWED_TRANSITIONS[booking.status] ?? [];
+	if (!allowedNextStatuses.includes(input.status)) {
+		throw new AppError(
+			`Cannot change booking status from ${booking.status} to ${input.status}`,
+			400,
+		);
+	}
+
+	const updated = await prisma.booking.update({
+		where: { id: bookingId },
+		data: { status: input.status },
+	});
+
+	return updated;
 }

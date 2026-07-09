@@ -3,12 +3,14 @@ import {
 	createBooking,
 	listBookings,
 	getBooking,
+	updateBookingStatus,
 } from "../controllers/booking.controller";
 import { authenticate, authorize } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
 import {
 	createBookingSchema,
 	browseBookingsQuerySchema,
+	updateBookingStatusSchema,
 } from "../validations/booking.validation";
 
 const router = Router();
@@ -27,5 +29,13 @@ router.get(
 	listBookings,
 );
 router.get("/:id", authenticate, getBooking);
+
+router.patch(
+	"/:id/status",
+	authenticate,
+	authorize("TECHNICIAN"),
+	validate(updateBookingStatusSchema),
+	updateBookingStatus,
+);
 
 export default router;
