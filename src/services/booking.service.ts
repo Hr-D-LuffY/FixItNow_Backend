@@ -3,7 +3,7 @@ import { AppError } from "../utils/AppError";
 import type { Prisma } from "../generated/prisma/client";
 import type {
 	CreateBookingInput,
-	// BrowseBookingsQuery,
+	BrowseBookingsQuery,
 } from "../validations/booking.validation";
 
 async function getOwnTechnicianProfileOrThrow(userId: string) {
@@ -44,4 +44,86 @@ export async function createBooking(
 	});
 
 	return booking;
+}
+
+type CallerRole = "CUSTOMER" | "TECHNICIAN" | "ADMIN";
+
+export async function browseBookings(
+	userId: string,
+	role: CallerRole,
+	query: BrowseBookingsQuery,
+) {
+	const { status, page, limit } = query;
+
+	const where: Prisma.BookingWhereInput = {
+		...(status !== undefined && { status }),
+	};
+
+	if (role === "CUSTOMER") {
+		where.customerId = userId;
+	} else if (role === "TECHNICIAN") {
+		const profile = await getOwnTechnicianProfileOrThrow(userId);
+		where.technicianId = profile.id;
+	}
+
+	const [bookings, total] = await Promise.all([
+		prisma.booking.findMany({
+			where,
+			skip: (page - 1) * limit,
+			take: limit,
+			orderBy: { createdAt: "desc" },
+			include: {
+				service: true,
+				customer: { select: { id: true, name: true, email: true } },
+				technician: true,
+			},
+		}),
+		prisma.booking.count({ where }),
+	]);
+
+	return {
+		bookings,
+		pagination: {
+			total,
+			page,
+			limit,
+			totalPages: Math.ceil(total / limit),
+		},
+	};
+}
+
+export async function getBookingById(
+	userId: string,
+	role: CallerRole,
+	bookingId: string,
+) {
+	const booking = await prisma.booking.findUnique({
+		where: { id: bookingId },
+		include: {
+			service: true,
+			customer: { select: { id: true, name: true, email: true } },
+			technician: true,
+		},
+	});
+
+	if (!booking) {
+		throw new AppError("Booking not found", 404);
+	}
+
+	if (role === "ADMIN") {
+		return booking;
+	}
+
+	if (role === "CUSTOMER" && booking.customerId === userId) {
+		return booking;
+	}
+
+	if (role === "TECHNICIAN") {
+		const profile = await getOwnTechnicianProfileOrThrow(userId);
+		if (booking.technicianId === profile.id) {
+			return booking;
+		}
+	}
+
+	throw new AppError("You do not have permission to view this booking", 403);
 }
