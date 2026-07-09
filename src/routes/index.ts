@@ -7,6 +7,7 @@ import categoryRoutes from "./category.routes";
 import technicianProfileRoutes from "./technicianProfile.routes";
 import serviceRoutes from "./service.routes";
 import bookingRoutes from "./booking.routes";
+import paymentRoutes from "./payment.routes";
 
 const router = Router();
 
@@ -29,5 +30,6 @@ router.use("/categories", categoryRoutes);
 router.use("/technicians", technicianProfileRoutes);
 router.use("/services", serviceRoutes);
 router.use("/bookings", bookingRoutes);
+router.use("/payments", paymentRoutes);
 
 export default router;
