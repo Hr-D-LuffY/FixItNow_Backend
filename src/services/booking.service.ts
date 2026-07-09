@@ -172,3 +172,33 @@ export async function updateBookingStatus(
 
 	return updated;
 }
+
+const CANCELLABLE_STATUSES: BookingStatus[] = ["REQUESTED", "ACCEPTED", "PAID"];
+
+export async function cancelBooking(userId: string, bookingId: string) {
+	const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+	if (!booking) {
+		throw new AppError("Booking not found", 404);
+	}
+
+	if (booking.customerId !== userId) {
+		throw new AppError(
+			"You do not have permission to cancel this booking",
+			403,
+		);
+	}
+
+	if (!CANCELLABLE_STATUSES.includes(booking.status)) {
+		throw new AppError(
+			`Booking cannot be cancelled once it is ${booking.status}`,
+			400,
+		);
+	}
+
+	const updated = await prisma.booking.update({
+		where: { id: bookingId },
+		data: { status: "CANCELLED" },
+	});
+
+	return updated;
+}

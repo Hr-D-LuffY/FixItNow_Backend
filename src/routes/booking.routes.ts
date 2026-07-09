@@ -4,6 +4,7 @@ import {
 	listBookings,
 	getBooking,
 	updateBookingStatus,
+	cancelBooking,
 } from "../controllers/booking.controller";
 import { authenticate, authorize } from "../middlewares/auth.middleware";
 import { validate } from "../middlewares/validate.middleware";
@@ -37,5 +38,7 @@ router.patch(
 	validate(updateBookingStatusSchema),
 	updateBookingStatus,
 );
+
+router.patch("/:id/cancel", authenticate, authorize("CUSTOMER"), cancelBooking);
 
 export default router;

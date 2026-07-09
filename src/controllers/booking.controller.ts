@@ -59,3 +59,16 @@ export const updateBookingStatus = asyncHandler(
 		});
 	},
 );
+
+export const cancelBooking = asyncHandler(
+	async (req: Request, res: Response) => {
+		if (!req.user) {
+			throw new AppError("Authentication required", 401);
+		}
+		const booking = await bookingService.cancelBooking(
+			req.user.userId,
+			req.params.id as string,
+		);
+		return sendSuccess(res, 200, "Booking cancelled successfully", { booking });
+	},
+);
