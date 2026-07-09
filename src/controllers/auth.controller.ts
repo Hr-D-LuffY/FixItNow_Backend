@@ -4,6 +4,7 @@ import { registerSchema, loginSchema } from "../validations/auth.validation";
 import {
 	registerUser,
 	loginUser,
+	getUserProfile,
 	AuthServiceError,
 } from "../services/auth.service";
 import { sendSuccess, sendError } from "../utils/response";
@@ -49,5 +50,22 @@ export async function login(req: Request, res: Response) {
 		}
 		console.error("Login error:", error);
 		return sendError(res, 500, "Something went wrong while logging in");
+	}
+}
+
+export async function me(req: Request, res: Response) {
+	try {
+		if (!req.user) {
+			return sendError(res, 401, "Authentication required");
+		}
+
+		const user = await getUserProfile(req.user.userId);
+		return sendSuccess(res, 200, "User profile fetched successfully", { user });
+	} catch (error) {
+		if (error instanceof AuthServiceError) {
+			return sendError(res, error.statusCode, error.message);
+		}
+		console.error("Get profile error:", error);
+		return sendError(res, 500, "Something went wrong while fetching profile");
 	}
 }
