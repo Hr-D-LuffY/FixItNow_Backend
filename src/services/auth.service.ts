@@ -2,18 +2,9 @@ import bcrypt from "bcryptjs";
 import prisma from "../config/prisma";
 import { signToken } from "../utils/jwt";
 import type { RegisterInput, LoginInput } from "../validations/auth.validation";
+import { AppError } from "../utils/AppError";
 
 const SALT_ROUNDS = 10;
-
-export class AuthServiceError extends Error {
-	statusCode: number;
-
-	constructor(message: string, statusCode: number) {
-		super(message);
-		this.statusCode = statusCode;
-		this.name = "AuthServiceError";
-	}
-}
 
 export async function registerUser(input: RegisterInput) {
 	const existingUser = await prisma.user.findUnique({
@@ -21,10 +12,7 @@ export async function registerUser(input: RegisterInput) {
 	});
 
 	if (existingUser) {
-		throw new AuthServiceError(
-			"An account with this email already exists",
-			409,
-		);
+		throw new AppError("An account with this email already exists", 409);
 	}
 
 	const hashedPassword = await bcrypt.hash(input.password, SALT_ROUNDS);
@@ -59,20 +47,17 @@ export async function loginUser(input: LoginInput) {
 	});
 
 	if (!user) {
-		throw new AuthServiceError("Invalid email or password", 401);
+		throw new AppError("Invalid email or password", 401);
 	}
 
 	if (user.status === "BANNED") {
-		throw new AuthServiceError(
-			"This account has been banned. Contact support.",
-			403,
-		);
+		throw new AppError("This account has been banned. Contact support.", 403);
 	}
 
 	const isPasswordValid = await bcrypt.compare(input.password, user.password);
 
 	if (!isPasswordValid) {
-		throw new AuthServiceError("Invalid email or password", 401);
+		throw new AppError("Invalid email or password", 401);
 	}
 
 	const token = signToken({ userId: user.id, role: user.role });
@@ -106,7 +91,7 @@ export async function getUserProfile(userId: string) {
 	});
 
 	if (!user) {
-		throw new AuthServiceError("User not found", 404);
+		throw new AppError("User not found", 404);
 	}
 
 	return user;

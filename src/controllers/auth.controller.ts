@@ -1,71 +1,27 @@
 import type { Request, Response } from "express";
-import { z, ZodError } from "zod";
-import { registerSchema, loginSchema } from "../validations/auth.validation";
 import {
 	registerUser,
 	loginUser,
 	getUserProfile,
-	AuthServiceError,
 } from "../services/auth.service";
-import { sendSuccess, sendError } from "../utils/response";
+import { sendSuccess } from "../utils/response";
+import { asyncHandler } from "../utils/asyncHandler";
+import { AppError } from "../utils/AppError";
 
-export async function register(req: Request, res: Response) {
-	try {
-		const parsed = registerSchema.parse(req.body);
-		const result = await registerUser(parsed);
-		return sendSuccess(res, 201, "User registered successfully", result);
-	} catch (error) {
-		if (error instanceof ZodError) {
-			return sendError(
-				res,
-				400,
-				"Validation failed",
-				z.flattenError(error).fieldErrors,
-			);
-		}
-		if (error instanceof AuthServiceError) {
-			return sendError(res, error.statusCode, error.message);
-		}
-		console.error("Register error:", error);
-		return sendError(res, 500, "Something went wrong while registering");
+export const register = asyncHandler(async (req: Request, res: Response) => {
+	const result = await registerUser(req.body);
+	return sendSuccess(res, 201, "User registered successfully", result);
+});
+
+export const login = asyncHandler(async (req: Request, res: Response) => {
+	const result = await loginUser(req.body);
+	return sendSuccess(res, 200, "Login successful", result);
+});
+
+export const me = asyncHandler(async (req: Request, res: Response) => {
+	if (!req.user) {
+		throw new AppError("Authentication required", 401);
 	}
-}
-
-export async function login(req: Request, res: Response) {
-	try {
-		const parsed = loginSchema.parse(req.body);
-		const result = await loginUser(parsed);
-		return sendSuccess(res, 200, "Login successful", result);
-	} catch (error) {
-		if (error instanceof ZodError) {
-			return sendError(
-				res,
-				400,
-				"Validation failed",
-				z.flattenError(error).fieldErrors,
-			);
-		}
-		if (error instanceof AuthServiceError) {
-			return sendError(res, error.statusCode, error.message);
-		}
-		console.error("Login error:", error);
-		return sendError(res, 500, "Something went wrong while logging in");
-	}
-}
-
-export async function me(req: Request, res: Response) {
-	try {
-		if (!req.user) {
-			return sendError(res, 401, "Authentication required");
-		}
-
-		const user = await getUserProfile(req.user.userId);
-		return sendSuccess(res, 200, "User profile fetched successfully", { user });
-	} catch (error) {
-		if (error instanceof AuthServiceError) {
-			return sendError(res, error.statusCode, error.message);
-		}
-		console.error("Get profile error:", error);
-		return sendError(res, 500, "Something went wrong while fetching profile");
-	}
-}
+	const user = await getUserProfile(req.user.userId);
+	return sendSuccess(res, 200, "User profile fetched successfully", { user });
+});
