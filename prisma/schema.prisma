@@ -57,6 +57,7 @@ model User {
   technicianProfile TechnicianProfile?
   bookings          Booking[]
   payments          Payment[]          @relation("CustomerPayments")
+  reviews Review[] @relation("CustomerReviews")
 
   @@map("users")
 }
@@ -85,7 +86,8 @@ model TechnicianProfile {
 
   user User @relation(fields: [userId], references: [id])
   services Service[]
-  bookings      Booking[]
+  bookings Booking[]
+  reviews Review[]
 
   @@map("technician_profiles")
 }
@@ -122,6 +124,7 @@ model Booking {
   technician TechnicianProfile @relation(fields: [technicianId], references: [id])
   service    Service           @relation(fields: [serviceId], references: [id])
   payment    Payment?
+  review Review?
 
   @@map("bookings")
 }
@@ -144,4 +147,20 @@ model Payment {
   customer User    @relation("CustomerPayments", fields: [customerId], references: [id])
 
   @@map("payments")
+}
+
+model Review {
+  id           String   @id @default(uuid())
+  bookingId    String   @unique
+  customerId   String
+  technicianId String
+  rating       Int
+  comment      String?
+  createdAt    DateTime @default(now())
+
+  booking    Booking           @relation(fields: [bookingId], references: [id])
+  customer   User              @relation("CustomerReviews", fields: [customerId], references: [id])
+  technician TechnicianProfile @relation(fields: [technicianId], references: [id])
+
+  @@map("reviews")
 }
