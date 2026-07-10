@@ -6,8 +6,13 @@ import {
 	getUser,
 	banUser,
 	unbanUser,
+	listAllBookings,
+	getBookingStats,
 } from "../controllers/admin.controller";
-import { browseUsersQuerySchema } from "../validations/admin.validation";
+import {
+	browseUsersQuerySchema,
+	adminBookingsQuerySchema,
+} from "../validations/admin.validation";
 
 const router = Router();
 
@@ -17,5 +22,12 @@ router.get("/users", validate(browseUsersQuerySchema, "query"), listUsers);
 router.get("/users/:id", getUser);
 router.patch("/users/:id/ban", banUser);
 router.patch("/users/:id/unban", unbanUser);
+
+router.get(
+	"/bookings",
+	validate(adminBookingsQuerySchema, "query"),
+	listAllBookings,
+);
+router.get("/bookings/stats", getBookingStats);
 
 export default router;

@@ -3,7 +3,10 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { sendSuccess } from "../utils/response";
 import { AppError } from "../utils/AppError";
 import * as adminService from "../services/admin.service";
-import type { BrowseUsersQuery } from "../validations/admin.validation";
+import type {
+	BrowseUsersQuery,
+	AdminBookingsQuery,
+} from "../validations/admin.validation";
 
 export const listUsers = asyncHandler(async (req: Request, res: Response) => {
 	const result = await adminService.browseUsers(
@@ -38,3 +41,19 @@ export const unbanUser = asyncHandler(async (req: Request, res: Response) => {
 	);
 	return sendSuccess(res, 200, "User unbanned successfully", { user });
 });
+
+export const listAllBookings = asyncHandler(
+	async (req: Request, res: Response) => {
+		const result = await adminService.browseAllBookings(
+			req.validatedQuery as unknown as AdminBookingsQuery,
+		);
+		return sendSuccess(res, 200, "Bookings fetched successfully", result);
+	},
+);
+
+export const getBookingStats = asyncHandler(
+	async (_req: Request, res: Response) => {
+		const stats = await adminService.getBookingStats();
+		return sendSuccess(res, 200, "Booking stats fetched successfully", stats);
+	},
+);
