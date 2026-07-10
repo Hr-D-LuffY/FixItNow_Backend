@@ -5,6 +5,7 @@ import { AppError } from "../utils/AppError";
 import { stripe } from "../config/stripe";
 import { env } from "../config/env";
 import * as paymentService from "../services/payment.service";
+import type { BrowsePaymentsQuery } from "../validations/payment.validation";
 
 export const createPaymentSession = asyncHandler(
 	async (req: Request, res: Response) => {
@@ -42,3 +43,29 @@ export const handleStripeWebhook = asyncHandler(
 		return res.status(200).json({ received: true });
 	},
 );
+
+export const listPayments = asyncHandler(
+	async (req: Request, res: Response) => {
+		if (!req.user) {
+			throw new AppError("Authentication required", 401);
+		}
+		const result = await paymentService.browsePayments(
+			req.user.userId,
+			req.user.role,
+			req.validatedQuery as unknown as BrowsePaymentsQuery,
+		);
+		return sendSuccess(res, 200, "Payments fetched successfully", result);
+	},
+);
+
+export const getPayment = asyncHandler(async (req: Request, res: Response) => {
+	if (!req.user) {
+		throw new AppError("Authentication required", 401);
+	}
+	const payment = await paymentService.getPaymentById(
+		req.user.userId,
+		req.user.role,
+		req.params.id as string,
+	);
+	return sendSuccess(res, 200, "Payment fetched successfully", { payment });
+});

@@ -4,7 +4,10 @@ import { stripe } from "../config/stripe";
 import { env } from "../config/env";
 import { AppError } from "../utils/AppError";
 import type { Prisma } from "../generated/prisma/client";
-import type { CreatePaymentSessionInput } from "../validations/payment.validation";
+import type {
+	CreatePaymentSessionInput,
+	BrowsePaymentsQuery,
+} from "../validations/payment.validation";
 
 const DEFAULT_CURRENCY = "usd";
 
@@ -209,4 +212,85 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
 		where: { id: payment.id },
 		data: { status: "FAILED" },
 	});
+}
+
+type CallerRole = "CUSTOMER" | "TECHNICIAN" | "ADMIN";
+
+async function getOwnTechnicianProfileOrThrow(userId: string) {
+	const profile = await prisma.technicianProfile.findUnique({
+		where: { userId },
+	});
+	if (!profile) {
+		throw new AppError(
+			"Technician profile not found. Please create one first.",
+			404,
+		);
+	}
+	return profile;
+}
+
+export async function browsePayments(
+	userId: string,
+	role: CallerRole,
+	query: BrowsePaymentsQuery,
+) {
+	const { status, page, limit } = query;
+
+	const where: Prisma.PaymentWhereInput = {
+		...(status !== undefined && { status }),
+	};
+
+	if (role === "CUSTOMER") {
+		where.customerId = userId;
+	} else if (role === "TECHNICIAN") {
+		const profile = await getOwnTechnicianProfileOrThrow(userId);
+		where.booking = { technicianId: profile.id };
+	}
+	// ADMIN: no extra scoping — sees all payments, optionally filtered by status
+
+	const [payments, total] = await Promise.all([
+		prisma.payment.findMany({
+			where,
+			skip: (page - 1) * limit,
+			take: limit,
+			orderBy: { createdAt: "desc" },
+			include: {
+				booking: { include: { service: true, technician: true } },
+				customer: { select: { id: true, name: true, email: true } },
+			},
+		}),
+		prisma.payment.count({ where }),
+	]);
+
+	return {
+		payments,
+		pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+	};
+}
+
+export async function getPaymentById(
+	userId: string,
+	role: CallerRole,
+	paymentId: string,
+) {
+	const payment = await prisma.payment.findUnique({
+		where: { id: paymentId },
+		include: {
+			booking: { include: { service: true, technician: true } },
+			customer: { select: { id: true, name: true, email: true } },
+		},
+	});
+
+	if (!payment) {
+		throw new AppError("Payment not found", 404);
+	}
+
+	if (role === "ADMIN") return payment;
+	if (role === "CUSTOMER" && payment.customerId === userId) return payment;
+	if (role === "TECHNICIAN") {
+		const profile = await getOwnTechnicianProfileOrThrow(userId);
+		if (payment.booking.technicianId === profile.id) return payment;
+	}
+
+	throw new AppError("You do not have permission to view this payment", 403);
 }
