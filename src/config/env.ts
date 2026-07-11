@@ -19,4 +19,6 @@ export const env = {
 	stripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET"),
 	clientUrl: getEnv("CLIENT_URL", "*"),
 	nodeEnv: getEnv("NODE_ENV", "development"),
+	adminEmail: getEnv("SEED_ADMIN_EMAIL"),
+	adminPassword: getEnv("SEED_ADMIN_PASSWORD"),
 };
